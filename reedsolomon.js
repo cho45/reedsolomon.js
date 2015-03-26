@@ -168,7 +168,7 @@ GenericGFPoly.prototype = {
 	},
 
 	addOrSubtract : function (other, buf) {
-		if (!this.field === other.field) {
+		if (this.field !== other.field) {
 			throw new Error('IllegalArgumentException("GenericGFPolys do not have same GenericGF field")');
 		}
 		if (this.isZero()) {
@@ -205,7 +205,7 @@ GenericGFPoly.prototype = {
 	},
 
 	multiplyGenericGFPoly : function (other) {
-		if (!this.field === other.field) {
+		if (this.field !== other.field) {
 			throw new Error('IllegalArgumentException("GenericGFPolys do not have same GenericGF field")');
 		}
 		if (this.isZero() || other.isZero()) {
@@ -256,7 +256,7 @@ GenericGFPoly.prototype = {
 	},
 
 	divide : function (other) {
-		if (!this.field === other.field) {
+		if (this.field !== other.field) {
 			throw new Error('IllegalArgumentException("GenericGFPolys do not have same GenericGF field")');
 		}
 		if (other.isZero()) {
