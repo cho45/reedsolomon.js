@@ -39,8 +39,8 @@ GenericGF.prototype = {
 		}
 		// logTable[0] == 0 but this should never be used
 
-		this.zero = new GenericGFPoly(this, new Int32Array([ 0 ]));
-		this.one = new GenericGFPoly(this, new Int32Array([ 1 ]));
+		this.zero = new GenericGFPoly(this, GenericGFPoly.COEFFICIENTS_ZERO);
+		this.one = new GenericGFPoly(this, GenericGFPoly.COEFFICIENTS_ONE);
 	},
 
 	buildMonomial : function (degree, coefficient) {
@@ -117,14 +117,14 @@ GenericGFPoly.prototype = {
 				firstNonZero++;
 			}
 			if (firstNonZero == coefficientsLength) {
-				this.coefficients = new Int32Array([ 0 ]);
+				this.coefficients = GenericGFPoly.COEFFICIENTS_ZERO;
 			} else {
-				this.coefficients = new Int32Array(coefficientsLength - firstNonZero);
-				this.coefficients.set(coefficients.subarray(firstNonZero, firstNonZero + this.coefficients.length));
+				this.coefficients = coefficients.subarray(firstNonZero, coefficientsLength);
 			}
 		} else {
 			this.coefficients = coefficients;
 		}
+		this.degree = this.coefficients.length - 1;
 	},
 
 	getCoefficients : function () {
@@ -132,7 +132,7 @@ GenericGFPoly.prototype = {
 	},
 
 	getDegree : function () {
-		return this.coefficients.length - 1;
+		return this.degree;
 	},
 
 	isZero : function () {
@@ -167,7 +167,7 @@ GenericGFPoly.prototype = {
 		return result;
 	},
 
-	addOrSubtract : function (other) {
+	addOrSubtract : function (other, buf) {
 		if (!this.field === other.field) {
 			throw new Error('IllegalArgumentException("GenericGFPolys do not have same GenericGF field")');
 		}
@@ -185,14 +185,13 @@ GenericGFPoly.prototype = {
 			smallerCoefficients = largerCoefficients;
 			largerCoefficients = temp;
 		}
-		var sumDiff = new Int32Array(largerCoefficients.length);
+		var sumDiff = buf ? buf.subarray(0, largerCoefficients.length) : new Int32Array(largerCoefficients.length);
 		var lengthDiff = largerCoefficients.length - smallerCoefficients.length;
-		// Copy high-order terms only found in higher-degree polynomial's coefficients
-		sumDiff.set(largerCoefficients.subarray(0, lengthDiff));
-
 		for (var i = lengthDiff; i < largerCoefficients.length; i++) {
 			sumDiff[i] = GenericGF.addOrSubtract(smallerCoefficients[i - lengthDiff], largerCoefficients[i]);
 		}
+		// Copy high-order terms only found in higher-degree polynomial's coefficients
+		sumDiff.set(largerCoefficients.subarray(0, lengthDiff));
 
 		return new GenericGFPoly(this.field, sumDiff);
 	},
@@ -210,7 +209,7 @@ GenericGFPoly.prototype = {
 			throw new Error('IllegalArgumentException("GenericGFPolys do not have same GenericGF field")');
 		}
 		if (this.isZero() || other.isZero()) {
-			return this.field.getZero();
+			return this.field.zero;
 		}
 		var aCoefficients = this.coefficients;
 		var aLength = aCoefficients.length;
@@ -228,7 +227,7 @@ GenericGFPoly.prototype = {
 
 	multiplyScalar : function (scalar) {
 		if (scalar === 0) {
-			return this.field.getZero();
+			return this.field.zero;
 		}
 		if (scalar == 1) {
 			return this;
@@ -246,7 +245,7 @@ GenericGFPoly.prototype = {
 			throw new Error('IllegalArgumentException()');
 		}
 		if (coefficient === 0) {
-			return this.field.getZero();
+			return this.field.zero;
 		}
 		var size = this.coefficients.length;
 		var product = new Int32Array(size + degree);
@@ -267,16 +266,16 @@ GenericGFPoly.prototype = {
 		var quotient = this.field.getZero();
 		var remainder = this;
  
-		var denominatorLeadingTerm = other.getCoefficient(other.getDegree());
+		var denominatorLeadingTerm = other.getCoefficient(other.degree);
 		var inverseDenominatorLeadingTerm = this.field.inverse(denominatorLeadingTerm);
 
-		while (remainder.getDegree() >= other.getDegree() && !remainder.isZero()) {
-			var degreeDifference = remainder.getDegree() - other.getDegree();
-			var scale = this.field.multiply(remainder.getCoefficient(remainder.getDegree()), inverseDenominatorLeadingTerm);
+		while (remainder.degree >= other.degree && !remainder.isZero()) {
+			var degreeDifference = remainder.degree - other.degree;
+			var scale = this.field.multiply(remainder.getCoefficient(remainder.degree), inverseDenominatorLeadingTerm);
 			var term = other.multiplyByMonomial(degreeDifference, scale);
 			var iterationQuotient = this.field.buildMonomial(degreeDifference, scale);
-			quotient = quotient.addOrSubtract(iterationQuotient);
-			remainder = remainder.addOrSubtract(term);
+			quotient = quotient.addOrSubtract(iterationQuotient, quotient.coefficients);
+			remainder = remainder.addOrSubtract(term, remainder.coefficients);
 		}
 
 		return [ quotient, remainder ];
@@ -284,7 +283,7 @@ GenericGFPoly.prototype = {
 
 	toString : function () {
 		var result = '';
-		for (var degree = this.getDegree(); degree >= 0; degree--) {
+		for (var degree = this.degree; degree >= 0; degree--) {
 			var coefficient = this.getCoefficient(degree);
 			if (coefficient !== 0) {
 				if (coefficient < 0) {
@@ -319,6 +318,8 @@ GenericGFPoly.prototype = {
 		return result.toString();
 	}
 };
+GenericGFPoly.COEFFICIENTS_ZERO = new Int32Array([ 0 ]);
+GenericGFPoly.COEFFICIENTS_ONE  = new Int32Array([ 1 ]);
 
 var ReedSolomonEncoder = function () { this.init.apply(this, arguments) };
 ReedSolomonEncoder.prototype = {
@@ -332,7 +333,7 @@ ReedSolomonEncoder.prototype = {
 		if (degree >= this.cachedGenerators.length) {
 			var lastGenerator = this.cachedGenerators[this.cachedGenerators.length - 1];
 			for (var d = this.cachedGenerators.length; d <= degree; d++) {
-				var nextGenerator = lastGenerator.multiply(new GenericGFPoly(this.field, new Int32Array([ 1, this.field.exp(d - 1 + this.field.getGeneratorBase()) ]) ));
+				var nextGenerator = lastGenerator.multiply(new GenericGFPoly(this.field, new Int32Array([ 1, this.field.exp(d - 1 + this.field.generatorBase) ]) ));
 				this.cachedGenerators.push(nextGenerator);
 				lastGenerator = nextGenerator;
 			}
@@ -355,7 +356,7 @@ ReedSolomonEncoder.prototype = {
 		var info = new GenericGFPoly(this.field, infoCoefficients);
 		info = info.multiplyByMonomial(ecBytes, 1);
 		var remainder = info.divide(generator)[1];
-		var coefficients = remainder.getCoefficients();
+		var coefficients = remainder.coefficients;
 		var numZeroCoefficients = ecBytes - coefficients.length;
 		for (var i = 0; i < numZeroCoefficients; i++) {
 			toEncode[dataBytes + i] = 0;
@@ -375,7 +376,7 @@ ReedSolomonDecoder.prototype = {
 		var syndromeCoefficients = new Int32Array(twoS);
 		var noError = true;
 		for (var i = 0; i < twoS; i++) {
-			var eval_ = poly.evaluateAt(this.field.exp(i + this.field.getGeneratorBase()));
+			var eval_ = poly.evaluateAt(this.field.exp(i + this.field.generatorBase));
 			syndromeCoefficients[syndromeCoefficients.length - 1 - i] = eval_;
 			if (eval_ !== 0) {
 				noError = false;
@@ -402,7 +403,7 @@ ReedSolomonDecoder.prototype = {
 
 	runEuclideanAlgorithm : function (a, b, R) {
 		// Assume a's degree is >= b's
-		if (a.getDegree() < b.getDegree()) {
+		if (a.degree < b.degree) {
 			var temp = a;
 			a = b;
 			b = temp;
@@ -410,11 +411,11 @@ ReedSolomonDecoder.prototype = {
 
 		var rLast = a;
 		var r = b;
-		var tLast = this.field.getZero();
-		var t = this.field.getOne();
+		var tLast = this.field.zero;
+		var t = this.field.one;
 
 		// Run Euclidean algorithm until r's degree is less than R/2
-		while (r.getDegree() >= R / 2) {
+		while (r.degree >= R / 2) {
 			var rLastLast = rLast;
 			var tLastLast = tLast;
 			rLast = r;
@@ -426,19 +427,19 @@ ReedSolomonDecoder.prototype = {
 				throw new ReedSolomonException("r_{i-1} was zero");
 			}
 			r = rLastLast;
-			var q = this.field.getZero();
-			var denominatorLeadingTerm = rLast.getCoefficient(rLast.getDegree());
+			var q = this.field.zero;
+			var denominatorLeadingTerm = rLast.getCoefficient(rLast.degree);
 			var dltInverse = this.field.inverse(denominatorLeadingTerm);
-			while (r.getDegree() >= rLast.getDegree() && !r.isZero()) {
-				var degreeDiff = r.getDegree() - rLast.getDegree();
-				var scale = this.field.multiply(r.getCoefficient(r.getDegree()), dltInverse);
+			while (r.degree >= rLast.degree && !r.isZero()) {
+				var degreeDiff = r.degree - rLast.degree;
+				var scale = this.field.multiply(r.getCoefficient(r.degree), dltInverse);
 				q = q.addOrSubtract(this.field.buildMonomial(degreeDiff, scale));
 				r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
 			}
 
 			t = q.multiply(tLast).addOrSubtract(tLastLast);
 
-			if (r.getDegree() >= rLast.getDegree()) {
+			if (r.degree >= rLast.degree) {
 				throw new IllegalStateException("Division algorithm failed to reduce polynomial?");
 			}
 		}
@@ -456,13 +457,13 @@ ReedSolomonDecoder.prototype = {
 
 	findErrorLocations : function (errorLocator) {
 		// This is a direct application of Chien's search
-		var numErrors = errorLocator.getDegree();
+		var numErrors = errorLocator.degree;
 		if (numErrors == 1) { // shortcut
 			return new Int32Array([  errorLocator.getCoefficient(1)  ]);
 		}
 		var result = new Int32Array(numErrors);
 		var e = 0;
-		for (var i = 1; i < this.field.getSize() && e < numErrors; i++) {
+		for (var i = 1; i < this.field.size && e < numErrors; i++) {
 			if (errorLocator.evaluateAt(i) === 0) {
 				result[e] = this.field.inverse(i);
 				e++;
@@ -493,7 +494,7 @@ ReedSolomonDecoder.prototype = {
 				}
 			}
 			result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
-			if (this.field.getGeneratorBase() !== 0) {
+			if (this.field.generatorBase !== 0) {
 				result[i] = this.field.multiply(result[i], xiInverse);
 			}
 		}
