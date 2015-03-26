@@ -1,0 +1,16 @@
+{
+  "name": "reedsolomon.js",
+  "version": "1.0.0",
+  "description": "An implementation of reedsolomon code (ported from ZXing)",
+  "main": "reedsolomon.js",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "keywords": [
+    "reedsolomon",
+    "error",
+    "correction"
+  ],
+  "author": "cho45 <cho45@lowreal.net> (http://www.lowreal.net/)",
+  "license": "Apache"
+}
