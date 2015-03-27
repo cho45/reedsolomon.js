@@ -45,7 +45,7 @@ GenericGF.prototype = {
 
 	buildMonomial : function (degree, coefficient) {
 		if (degree < 0) {
-			throw new Error("IllegalArgumentException");
+			throw new Error("IllegalArgumentException()");
 		}
 		if (coefficient === 0) {
 			return this.zero;
@@ -69,14 +69,14 @@ GenericGF.prototype = {
 
 	log : function (a) {
 		if (a === 0) {
-			throw new Error("IllegalArgumentException");
+			throw new Error("IllegalArgumentException()");
 		}
 		return this.logTable[a];
 	},
 
 	inverse: function (a) {
 		if (a === 0) {
-			throw new Error("ArithmeticException");
+			throw new Error("ArithmeticException()");
 		}
 		return this.expTable[this.size - this.logTable[a] - 1];
 	},
@@ -106,7 +106,7 @@ var GenericGFPoly = function () { this.init.apply(this, arguments) };
 GenericGFPoly.prototype = {
 	init : function (field, coefficients) {
 		if (coefficients.length === 0) {
-			throw new Error("IllegalArgumentException");
+			throw new Error("IllegalArgumentException()");
 		}
 		this.field = field;
 		var coefficientsLength = coefficients.length;
@@ -260,7 +260,7 @@ GenericGFPoly.prototype = {
 			throw new Error('IllegalArgumentException("GenericGFPolys do not have same GenericGF field")');
 		}
 		if (other.isZero()) {
-			throw new IllegalArgumentException("Divide by 0");
+			throw new Error('IllegalArgumentException("Divide by 0")');
 		}
 
 		var quotient = this.field.getZero();
@@ -424,7 +424,7 @@ ReedSolomonDecoder.prototype = {
 			// Divide rLastLast by rLast, with quotient in q and remainder in r
 			if (rLast.isZero()) {
 				// Oops, Euclidean algorithm already terminated?
-				throw new ReedSolomonException("r_{i-1} was zero");
+				throw new Error('ReedSolomonException("r_{i-1} was zero")');
 			}
 			r = rLastLast;
 			var q = this.field.zero;
@@ -440,7 +440,7 @@ ReedSolomonDecoder.prototype = {
 			t = q.multiply(tLast).addOrSubtract(tLastLast);
 
 			if (r.degree >= rLast.degree) {
-				throw new IllegalStateException("Division algorithm failed to reduce polynomial?");
+				throw new Error('IllegalStateException("Division algorithm failed to reduce polynomial?")');
 			}
 		}
 
