@@ -1,5 +1,5 @@
 /*#!/usr/bin/env node
- * Original implementation is ZXing and ported to JavaScript by cho45
+ * Original implementation is ZXing and ported to JavaScript by cho45.
  * Copyright 2007 ZXing authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -484,13 +484,7 @@ ReedSolomonDecoder.prototype = {
 			var denominator = 1;
 			for (var j = 0; j < s; j++) {
 				if (i != j) {
-					//denominator = field.multiply(denominator,
-					//    GenericGF.addOrSubtract(1, field.multiply(errorLocations[j], xiInverse)));
-					// Above should work but fails on some Apple and Linux JDKs due to a Hotspot bug.
-					// Below is a funny-looking workaround from Steven Parkes
-					var term = this.field.multiply(errorLocations[j], xiInverse);
-					var termPlus1 = (term & 0x1) === 0 ? term | 1 : term & ~1;
-					denominator = this.field.multiply(denominator, termPlus1);
+					denominator = this.field.multiply(denominator, GenericGF.addOrSubtract(1, this.field.multiply(errorLocations[j], xiInverse)));
 				}
 			}
 			result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));

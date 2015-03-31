@@ -1,10 +1,14 @@
 {
-  "name": "reedsolomon.js",
+  "name": "reedsolomon",
   "version": "1.0.0",
   "description": "An implementation of reedsolomon code (ported from ZXing)",
   "main": "reedsolomon.js",
   "scripts": {
     "test": "node test/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:cho45/reedsolomon.js.git"
   },
   "keywords": [
     "reedsolomon",
